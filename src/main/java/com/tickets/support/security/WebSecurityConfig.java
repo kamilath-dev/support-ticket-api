@@ -32,6 +32,20 @@ public class WebSecurityConfig {
         return new AuthTokenFilter();
     }
     
+    // provide a CorsConfigurationSource so Spring Security can merge with MVC config
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+        config.setAllowedOrigins(java.util.List.of("http://localhost:3000"));
+        config.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS","HEAD","PATCH"));
+        config.setAllowedHeaders(java.util.List.of("Authorization","Content-Type","X-Requested-With","Accept","Origin"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+    
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
@@ -44,14 +58,16 @@ public class WebSecurityConfig {
     
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> 
-                        auth.requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()  // ← AJOUTEZ CETTE LIGNE
-                                .anyRequest().authenticated()
-                );
+        // enable CORS support so the CorsConfig (WebMvcConfigurer) is applied
+        http.cors().and()
+            .csrf(csrf -> csrf.disable())
+            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> 
+                    auth.requestMatchers("/api/auth/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                            .anyRequest().authenticated()
+            );
         
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         

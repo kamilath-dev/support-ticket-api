@@ -18,6 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import com.tickets.support.repository.TicketSpecifications;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 
 
@@ -29,24 +32,43 @@ public class TicketService {
     
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AttachmentService attachmentService;
     
-    public TicketResponse createTicket(TicketRequest ticketRequest, String username) {
+    public TicketResponse createTicket(TicketRequest ticketRequest, String username) throws IOException {
+        // Refactor to call the new method with no files
+        return createTicketWithAttachments(ticketRequest, null, username);
+    }
+
+    @Transactional
+    public TicketResponse createTicketWithAttachments(TicketRequest ticketRequest, List<MultipartFile> files, String username) throws IOException {
+        // 1. Create the ticket entity
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         Ticket ticket = new Ticket();
         ticket.setTitle(ticketRequest.getTitle());
         ticket.setDescription(ticketRequest.getDescription());
-        
+
         if (ticketRequest.getPriority() != null) {
             ticket.setPriority(TicketPriority.valueOf(ticketRequest.getPriority()));
         } else {
             ticket.setPriority(TicketPriority.MEDIUM);
         }
-        
+
         ticket.setUser(user);
-        
         Ticket savedTicket = ticketRepository.save(ticket);
+
+        // 2. Save attachments if they exist
+        if (files != null && !files.isEmpty()) {
+            for (MultipartFile file : files) {
+                // Assuming attachmentService handles storage and DB record creation
+                attachmentService.saveAttachment(file, savedTicket.getId());
+            }
+        }
+
+        // 3. Map to response DTO
         return mapToResponse(savedTicket);
     }
     
