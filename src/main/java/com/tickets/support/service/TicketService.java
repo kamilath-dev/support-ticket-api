@@ -12,6 +12,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import com.tickets.support.repository.TicketSpecifications;
+
+
 
 @Service
 public class TicketService {
@@ -92,6 +100,31 @@ public class TicketService {
         
         ticketRepository.delete(ticket);
     }
+
+    public Page<TicketResponse> getUserTicketsPaginated(
+        String username, int page, int size, String search, String status, String priority) {
+    
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        // Construction dynamique de la requête avec les filtres
+        Specification<Ticket> spec = Specification.where(TicketSpecifications.belongsToUser(user));
+        
+        if (search != null && !search.isEmpty()) {
+            spec = spec.and(TicketSpecifications.titleOrDescriptionContains(search));
+        }
+        if (status != null && !status.isEmpty()) {
+            spec = spec.and(TicketSpecifications.hasStatus(TicketStatus.valueOf(status)));
+        }
+        if (priority != null && !priority.isEmpty()) {
+            spec = spec.and(TicketSpecifications.hasPriority(TicketPriority.valueOf(priority)));
+        }
+        
+        Page<Ticket> ticketsPage = ticketRepository.findAll(spec, pageable);
+        return ticketsPage.map(this::mapToResponse);
+    }
     
     private TicketResponse mapToResponse(Ticket ticket) {
         TicketResponse response = new TicketResponse();
@@ -106,4 +139,37 @@ public class TicketService {
         response.setUsername(ticket.getUser().getUsername());
         return response;
     }
+
+    public Page<TicketResponse> getAllTickets(int page, int size, String search, String status, String priority) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        Specification<Ticket> spec = Specification.where(null);
+        
+        if (search != null && !search.isEmpty()) {
+            spec = spec.and(TicketSpecifications.titleOrDescriptionContains(search));
+        }
+        if (status != null && !status.isEmpty()) {
+            spec = spec.and(TicketSpecifications.hasStatus(TicketStatus.valueOf(status)));
+        }
+        if (priority != null && !priority.isEmpty()) {
+            spec = spec.and(TicketSpecifications.hasPriority(TicketPriority.valueOf(priority)));
+        }
+        
+        Page<Ticket> ticketsPage = ticketRepository.findAll(spec, pageable);
+        return ticketsPage.map(this::mapToResponse);
+    }
+
+    public TicketResponse assignTicket(Long ticketId, Long userId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        ticket.setUser(user);
+        Ticket updatedTicket = ticketRepository.save(ticket);
+        return mapToResponse(updatedTicket);
+    }
+
+
 }

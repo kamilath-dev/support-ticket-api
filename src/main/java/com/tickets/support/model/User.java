@@ -1,5 +1,6 @@
 package com.tickets.support.model;
 
+import com.tickets.support.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,9 @@ public class User {
     
     private String fullName;
     
+    @Enumerated(EnumType.STRING)
+    private Role role;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -36,5 +40,8 @@ public class User {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (role == null) {
+            role = Role.ROLE_USER; // Par défaut, les nouveaux utilisateurs sont USER
+        }
     }
 }

@@ -68,7 +68,11 @@ Cette application permet aux utilisateurs de :
 - **PostgreSQL** 14 ou supérieur
 - **Maven** 3.8 ou supérieur
 - **Navigateur** moderne (Chrome, Firefox, Edge)
+## Améliorations possibles
 
+- Ajout d'un système de rôles (admin / utilisateur)
+- Pagination et recherche dans la liste des tickets
+- Upload de pièces jointes dans les tickets
 
 ## CREATION DE LA BASE DE DONNEE
 

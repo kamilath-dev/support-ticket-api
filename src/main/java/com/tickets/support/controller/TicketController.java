@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 // @CrossOrigin(origins = "*", maxAge = 3600)
 @CrossOrigin(origins = "http://localhost:3000", maxAge = 3600)
@@ -21,14 +21,21 @@ public class TicketController {
     private TicketService ticketService;
     
     @GetMapping
-    public ResponseEntity<List<TicketResponse>> getUserTickets() {
+    public ResponseEntity<Page<TicketResponse>> getUserTickets(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority) {
+        
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String username = userDetails.getUsername();
         
-        List<TicketResponse> tickets = ticketService.getUserTickets(username);
+        Page<TicketResponse> tickets = ticketService.getUserTicketsPaginated(
+                username, page, size, search, status, priority);
         return ResponseEntity.ok(tickets);
     }
-    
+        
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponse> getTicketById(@PathVariable Long id) {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
